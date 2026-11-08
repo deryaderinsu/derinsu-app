@@ -1,0 +1,49 @@
+name: Build APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Klasorleri hazirla
+        run: |
+          mkdir -p www assets
+          cp index.html www/index.html
+          cp alarm.wav assets/alarm.wav
+          cp icon.png assets/icon.png
+      - run: npm install
+      - run: npx cap add android
+      - name: Alarm sesi ve izinler
+        run: |
+          mkdir -p android/app/src/main/res/raw
+          cp assets/alarm.wav android/app/src/main/res/raw/alarm.wav
+          python3 - <<'PY'
+          p='android/app/src/main/AndroidManifest.xml'
+          s=open(p,encoding='utf-8').read()
+          perms=''.join('    <uses-permission android:name="android.permission.%s" />\n'%x for x in ['POST_NOTIFICATIONS','SCHEDULE_EXACT_ALARM','USE_EXACT_ALARM','VIBRATE','WAKE_LOCK','RECEIVE_BOOT_COMPLETED'])
+          s=s.replace('</manifest>',perms+'</manifest>')
+          open(p,'w',encoding='utf-8').write(s)
+          PY
+      - name: Simgeler
+        continue-on-error: true
+        run: npx capacitor-assets generate --android --iconBackgroundColor '#ffe3f1' --iconBackgroundColorDark '#2a1f42'
+      - run: npx cap sync android
+      - name: APK derle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: derinsu-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
