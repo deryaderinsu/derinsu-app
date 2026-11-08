@@ -1,0 +1,6 @@
+{
+  "appId": "com.derinsu.app",
+  "appName": "derinsu",
+  "webDir": "www",
+  "android": { "backgroundColor": "#fff3f8" }
+}
